@@ -318,32 +318,33 @@ def create_db_view(db_path: str, view_name: str):
                 subnet, network_ip, broadcast_ip
             FROM ASA_INTERFACE_IP_ADDRESSES
             UNION ALL
-            SELECT 
+            SELECT  DISTINCT
                 device, name AS interface, address AS ip,
                 cidr, vlan AS description, NULL AS vrf,
                 subnet, network_ip, broadcast_ip
             FROM BIGIP_SELF_IPS
             UNION ALL
-            SELECT 
-            device, interface, ip, cidr, description, vrf,
-            subnet, network_ip, broadcast_ip
+            SELECT  DISTINCT
+                device, interface, ip, cidr, description, vrf,
+                subnet, network_ip, broadcast_ip
             FROM IOS_INTERFACE_IP_ADDRESSES
             UNION ALL
-            SELECT device, interface, ip, cidr, NULL AS description,
-            vrf, subnet, network_ip, broadcast_ip
+            SELECT DISTINCT
+                device, interface, ip, cidr, NULL AS description,
+                vrf, subnet, network_ip, broadcast_ip
             FROM NXOS_INTERFACE_IP_ADDRESSES
             UNION ALL
-            SELECT mo.name as device, NULL as interface, mv.applianceip as ip, mv.cidr,
-            mv.name AS description, NULL AS vrf, 
-            mv.subnet, mv.network_ip, mv.broadcast_ip
+            SELECT  DISTINCT
+                mo.name as device, 'vlan-' || mv.id as interface, mv.applianceip as ip, mv.cidr,
+                mv.name AS description, NULL AS vrf, 
+                mv.subnet, mv.network_ip, mv.broadcast_ip
             FROM MERAKI_NETWORK_APPLIANCE_VLANS as mv LEFT JOIN 
             meraki_org_networks as mo on mv.networkId = mo.id
             UNION ALL
-            SELECT device, name AS interface, ip, cidr, zone AS description,
-            fwd AS vrf, subnet, network_ip, broadcast_ip
-            FROM PANOS_INTERFACE_IP_ADDRESSES
-            /* interface_ips(device,interface,ip,cidr,description,vrf,
-            subnet,network_ip,broadcast_ip) */;
+            SELECT  DISTINCT
+                device, name AS interface, ip, cidr, zone AS description,
+                zone AS vrf, subnet, network_ip, broadcast_ip
+            FROM PANOS_INTERFACE_IP_ADDRESSES;
             """
         )
         con.commit()
