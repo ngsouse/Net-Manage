@@ -1734,7 +1734,6 @@ def get_vlans(username: str,
 
     # Create `df`.
     df = pd.DataFrame.from_dict(df_data).astype(str)
-    print(df)
 
     # Make `device` the first column, then return `df`.
     col_1 = df.pop('device')

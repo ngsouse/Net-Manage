@@ -760,8 +760,7 @@ def generate_subnet_details(
 
     for ip in addresses:
         if " " in ip:  # For 'IP SUBNET_MASK' format
-            ip_address = ip.split()[0]
-            mask = ip.split()[1]
+            ip_address, mask = ip.split()
             ip_obj = ipaddress.ip_interface(
                 f'{ip_address}/{ipaddress.IPv4Network("0.0.0.0/"+mask).prefixlen}'
             )
