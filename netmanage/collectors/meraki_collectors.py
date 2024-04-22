@@ -389,10 +389,10 @@ async def meraki_get_network_clients(
     data = [client for clients in results for client in clients]
     df_data = {key: [] for key in set().union(*(d.keys() for d in data))}
     for client in data:
-        for key, value in client.items():
-            df_data[key].append(value)
+        for key in df_data:
+            df_data[key].append(client.get(key, None))
 
-    df = pd.DataFrame(df_data).astype("str")
+    df = pd.DataFrame.from_dict(df_data).astype("str")
 
     if macs:
         df_clients = (
