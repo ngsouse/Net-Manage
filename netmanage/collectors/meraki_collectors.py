@@ -232,7 +232,7 @@ def get_network_appliance_vlans(
     # Get the appliance vlans for each network. Note: if 'orgs' and 'networks'
     # are both non-empty, then 'orgs' is ignored. The list of networks takes
     # priority.
-    dashboard = meraki.DashboardAPI(api_key=api_key, suppress_logging=True)
+    dashboard = meraki.DashboardAPI(api_key=api_key, suppress_logging=True, log_path = '/var/log/netbox/')
 
     # The only way to get appliance VLANs is to iterate over a list of
     # networks. There is not a way to gather them for an organization. I found
@@ -381,6 +381,7 @@ async def meraki_get_network_clients(
         print_console=print_to_console,
         maximum_concurrent_requests=sem,
         maximum_retries=20,
+        log_path = '/var/log/netbox/'
     ) as dashboard:
         tasks = [get_clients_for_network(dashboard, nid, limiter) for nid in networks]
         results = await asyncio.gather(*tasks)
