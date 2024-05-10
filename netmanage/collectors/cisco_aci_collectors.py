@@ -342,6 +342,7 @@ def main(env_path: str):
         # Try to get a token from each of the APIC URLs. The loop breaks on success. If
         # no APICs return a token, then the token for the site is set to None
         for url in params["apic_urls"]:
+            logger.info(f"Getting auth token for site: {site}")
             token = cah.get_auth_token(
                 url,
                 params["username"],
@@ -368,7 +369,7 @@ def main(env_path: str):
     for site, params in config.aci_sites.items():
         msg = f"Collecting node attributes from site '{site}'"
         logger.info(msg)
-        token = params["token"]
+        token = params.get("token")
         if token:
             # Use the token to get interface IP addresses
             for url in params["apic_urls"]:
@@ -396,6 +397,7 @@ def main(env_path: str):
                 # Create the list of columns to use for the index, then add the nodes
                 # attributes to the database
                 id_cols = [_ for _ in df.columns.to_list() if _ not in excluded]
+                logger.info(f"site: {site}, records: {df.shape}")
                 cah.store_results_in_db(
                     df,
                     config.db_path,
@@ -408,7 +410,7 @@ def main(env_path: str):
     for site, params in config.aci_sites.items():
         msg = f"Collecting subnets from site '{site}'"
         logger.info(msg)
-        token = params["token"]
+        token = params.get("token")
         if token:
             # Use the token to get interface IP addresses
             for url in params["apic_urls"]:
@@ -431,6 +433,7 @@ def main(env_path: str):
                 # Create the list of columns to use for the index, then add the nodes
                 # attributes to the database
                 id_cols = [_ for _ in df.columns.to_list() if _ not in excluded]
+                logger.info(f"site: {site}, records: {df.shape}")
                 cah.store_results_in_db(
                     df,
                     config.db_path,

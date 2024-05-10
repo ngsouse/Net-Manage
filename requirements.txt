@@ -24,6 +24,8 @@ python-dotenv
 python-nmap
 xmltodict
 streamlit
+sqlalchemy
 tabulate
 urllib3>=1.26.13,<=1.26.155
 watchdog
+loguru
