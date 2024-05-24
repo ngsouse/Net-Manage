@@ -107,7 +107,17 @@ def create_db_view(db_path: str, view_name: str):
             device,
             model,
             serial
-        FROM PANOS_HARDWARE_INVENTORY;
+        FROM PANOS_HARDWARE_INVENTORY
+
+         UNION ALL
+
+        -- CISCO_ACI_GET_SITE_fabric_nodes segment
+        SELECT
+            'CISCO_ACI_GET_SITE_fabric_nodes' AS source,
+            name as device,
+            model,
+            serial
+        FROM CISCO_ACI_GET_SITE_fabric_nodes;
         """
         )
         con.commit()

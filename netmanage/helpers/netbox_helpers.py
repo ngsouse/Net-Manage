@@ -374,6 +374,34 @@ def get_device_types():
                 "weight": 47.5,
                 "weight_unit": "lb",
             },
+            "N9K-C93180YC-FX3": {
+                "u_height": 2,
+                "is_full_depth": True,
+                "airflow": "front-to-rear",
+                "weight": 47.5,
+                "weight_unit": "lb",
+            },
+            "N9K-C93108TC-FX3P": {
+                "u_height": 2,
+                "is_full_depth": True,
+                "airflow": "front-to-rear",
+                "weight": 47.5,
+                "weight_unit": "lb",
+            },
+            "N9K-C9336C-FX2-E": {
+                "u_height": 2,
+                "is_full_depth": True,
+                "airflow": "front-to-rear",
+                "weight": 47.5,
+                "weight_unit": "lb",
+            },
+            "N9K-C9364C": {
+                "u_height": 2,
+                "is_full_depth": True,
+                "airflow": "front-to-rear",
+                "weight": 47.5,
+                "weight_unit": "lb",
+            },
             "WS-C2960X-24TS-LL": {
                 "u_height": 1,
                 "is_full_depth": True,
@@ -555,6 +583,24 @@ def get_device_types():
                 "weight_unit": "lb",
                 "slug": "iol",
             },
+            "APIC-SERVER-L3": {
+                "slug": "cisco-apic-l3",
+                "part_number": "APIC-L3",
+                "u_height": 1,
+                "is_full_depth": True,
+                "airflow": "front-to-rear",
+                "weight": "37.5",
+                "weight_unit": "lb",
+            },
+            "APIC-M3": {
+                "slug": "cisco-apic-m3",
+                "part_number": "APIC-M3",
+                "u_height": 1,
+                "is_full_depth": True,
+                "airflow": "front-to-rear",
+                "weight": "37.5",
+                "weight_unit": "lb",
+            }
         },
         "F5 NETWORKS": {
             "BIG-IP i4600": {

@@ -342,7 +342,7 @@ def main(env_path: str):
         # Try to get a token from each of the APIC URLs. The loop breaks on success. If
         # no APICs return a token, then the token for the site is set to None
         for url in params["apic_urls"]:
-            logger.info(f"Getting auth token for site: {site}")
+            logger.info(f"Getting auth token for site: {site}, url: {url}")
             token = cah.get_auth_token(
                 url,
                 params["username"],
@@ -367,12 +367,12 @@ def main(env_path: str):
 
     # Attempt to collect node attributes from ACI sites
     for site, params in config.aci_sites.items():
-        msg = f"Collecting node attributes from site '{site}'"
-        logger.info(msg)
         token = params.get("token")
         if token:
             # Use the token to get interface IP addresses
             for url in params["apic_urls"]:
+                msg = f"Collecting node attributes from site '{site}' url: '{url}'"
+                logger.info(msg)
                 df = get_nodes_attributes(
                     url, params["token"], verify=config.validate_certs
                 )
@@ -408,10 +408,10 @@ def main(env_path: str):
 
     # Attempt to collect subnets from ACI sites
     for site, params in config.aci_sites.items():
-        msg = f"Collecting subnets from site '{site}'"
-        logger.info(msg)
         token = params.get("token")
         if token:
+            msg = f"Collecting node attributes from site '{site}' url: '{url}'"
+            logger.info(msg)
             # Use the token to get interface IP addresses
             for url in params["apic_urls"]:
                 df = get_site_subnets(
