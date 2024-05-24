@@ -329,6 +329,223 @@ def get_site_subnets(
     return df
 
 
+
+def get_site_inventory(
+    url: str, token: str, verify: bool = True
+) -> Optional[Dict[str, Any]]:
+    """
+    Retrieve site inventory from an ACI APIC.
+
+    This function performs an HTTP GET request to the specified APIC URL and retrieves
+    inventory for all bridge domains in a site. It uses an authentication token provided
+    by the user.
+
+    Parameters
+    ----------
+    url : str
+        The base URL of the ACI APIC to which the request is sent.
+    token : str
+        The authentication token used for the APIC session.
+    verify : bool, optional
+        A boolean indicating whether to verify the server's TLS certificate.
+        Defaults to True.
+
+    Returns
+    -------
+    Optional[Dict[str, Any]]
+        A dictionary containing the response data with site inventory, or None if
+        an error occurs during the request.
+
+    Raises
+    ------
+    HTTPError
+        If the HTTP request returned an unsuccessful status code.
+    Exception
+        If any other exception occurred during the request.
+
+    Examples
+    --------
+    >>> apic_url = 'https://apic.example.com'
+    >>> apic_token = 'APIC_AUTH_TOKEN'
+    >>> site_inventory = get_site_inventory(apic_url, apic_token)
+    >>> print(site_inventory)
+
+    Notes
+    -----
+    The function logs HTTP errors and other exceptions using a logger obtained from
+    a helper function `hp.setup_logger()`.
+
+    """
+    logger = hp.setup_logger()
+
+    headers = {"Cookie": f"APIC-cookie={token}"}
+    url = f"{url}/api/node/class/fabricNode.json"
+
+    inventory = None
+
+    try:
+        response = requests.get(url, headers=headers, verify=verify)
+        response.raise_for_status()  # Will raise HTTPError for 4xx and 5xx status codes
+        inventory = response.json()
+    except HTTPError as http_err:
+        logger.error(f"HTTP error occurred: {http_err}")
+    except Exception as err:
+        logger.error(f"An error occurred: {err}")
+
+    # If any inventory were returned, then add them to a DataFrame
+    if inventory:
+        flattened_data = [item["fabricNode"]["attributes"] for item in inventory["imdata"]]
+        df = pd.DataFrame(flattened_data)
+    else:
+        df = pd.DataFrame()
+
+    return df
+
+def get_site_client_endpoint_ips(
+    url: str, token: str, verify: bool = True
+) -> Optional[Dict[str, Any]]:
+    """
+    Retrieve site endpoints from an ACI APIC.
+
+    This function performs an HTTP GET request to the specified APIC URL and retrieves
+    endpoints for all bridge domains in a site. It uses an authentication token provided
+    by the user.
+
+    Parameters
+    ----------
+    url : str
+        The base URL of the ACI APIC to which the request is sent.
+    token : str
+        The authentication token used for the APIC session.
+    verify : bool, optional
+        A boolean indicating whether to verify the server's TLS certificate.
+        Defaults to True.
+
+    Returns
+    -------
+    Optional[Dict[str, Any]]
+        A dictionary containing the response data with site endpoints, or None if
+        an error occurs during the request.
+
+    Raises
+    ------
+    HTTPError
+        If the HTTP request returned an unsuccessful status code.
+    Exception
+        If any other exception occurred during the request.
+
+    Examples
+    --------
+    >>> apic_url = 'https://apic.example.com'
+    >>> apic_token = 'APIC_AUTH_TOKEN'
+    >>> site_client_endpoint_ips = get_site_client_endpoint_ips(apic_url, apic_token)
+    >>> print(site_client_endpoint_ips)
+
+    Notes
+    -----
+    The function logs HTTP errors and other exceptions using a logger obtained from
+    a helper function `hp.setup_logger()`.
+
+    """
+    logger = hp.setup_logger()
+
+    headers = {"Cookie": f"APIC-cookie={token}"}
+    url = f"{url}/api/node/class/fvIp.json?rsp-subtree=full"
+
+    endpoints = None
+
+    try:
+        response = requests.get(url, headers=headers, verify=verify)
+        response.raise_for_status()  # Will raise HTTPError for 4xx and 5xx status codes
+        endpoints = response.json()
+    except HTTPError as http_err:
+        logger.error(f"HTTP error occurred: {http_err}")
+    except Exception as err:
+        logger.error(f"An error occurred: {err}")
+
+    # If any endpoints were returned, then add them to a DataFrame
+    if endpoints:
+        flattened_data = [item["fvIp"]["attributes"] for item in endpoints["imdata"]]
+        df = pd.DataFrame(flattened_data)
+    else:
+        df = pd.DataFrame()
+
+    return df
+
+
+
+def get_site_bridge_domains(
+    url: str, token: str, verify: bool = True
+) -> Optional[Dict[str, Any]]:
+    """
+    Retrieve site bridge domains from an ACI APIC.
+
+    This function performs an HTTP GET request to the specified APIC URL and retrieves
+    bridge domains for all bridge domains in a site. It uses an authentication token provided
+    by the user.
+
+    Parameters
+    ----------
+    url : str
+        The base URL of the ACI APIC to which the request is sent.
+    token : str
+        The authentication token used for the APIC session.
+    verify : bool, optional
+        A boolean indicating whether to verify the server's TLS certificate.
+        Defaults to True.
+
+    Returns
+    -------
+    Optional[Dict[str, Any]]
+        A dictionary containing the response data with site endpoints, or None if
+        an error occurs during the request.
+
+    Raises
+    ------
+    HTTPError
+        If the HTTP request returned an unsuccessful status code.
+    Exception
+        If any other exception occurred during the request.
+
+    Examples
+    --------
+    >>> apic_url = 'https://apic.example.com'
+    >>> apic_token = 'APIC_AUTH_TOKEN'
+    >>> site_bridge_domains = get_site_bridge_domains(apic_url, apic_token)
+    >>> print(site_bridge_domains)
+
+    Notes
+    -----
+    The function logs HTTP errors and other exceptions using a logger obtained from
+    a helper function `hp.setup_logger()`.
+
+    """
+    logger = hp.setup_logger()
+
+    headers = {"Cookie": f"APIC-cookie={token}"}
+    url = f"{url}/api/node/class/fvBD.json"
+
+    endpoints = None
+
+    try:
+        response = requests.get(url, headers=headers, verify=verify)
+        response.raise_for_status()  # Will raise HTTPError for 4xx and 5xx status codes
+        endpoints = response.json()
+    except HTTPError as http_err:
+        logger.error(f"HTTP error occurred: {http_err}")
+    except Exception as err:
+        logger.error(f"An error occurred: {err}")
+
+    # If any endpoints were returned, then add them to a DataFrame
+    if endpoints:
+        flattened_data = [item["fvBD"]["attributes"] for item in endpoints["imdata"]]
+        df = pd.DataFrame(flattened_data)
+    else:
+        df = pd.DataFrame()
+
+    return df
+
+
 def main(env_path: str):
     # Setup the logger
     logger = hp.setup_logger()
@@ -364,6 +581,81 @@ def main(env_path: str):
                 break
             else:
                 setattr(config, "aci_token", None)
+    
+    # Attempt to collect inventory from ACI sites
+    for site, params in config.aci_sites.items():
+        token = params.get("token")
+        if token:
+            msg = f"Collecting inventory attributes from site '{site}' url: '{url}'"
+            logger.info(msg)
+            # Use the token to get interface IP addresses
+            for url in params["apic_urls"]:
+                df = get_site_inventory(
+                    url, params["token"], verify=config.validate_certs
+                )
+                # If site inventory were found then break out of the loop. Otherwise, proceed
+                if not df.empty:
+                    # Move the APIC that responded to the beginning of the `apic_urls`
+                    # list for the site
+                    config.aci_sites[site]["apic_urls"] = hp.move_list_element_to_front(
+                        config.aci_sites[site]["apic_urls"], url
+                    )
+                    break
+            # If site inventory were found then add them to the database
+            if not df.empty:
+                # Exclude these columns from being part of the index (this is to keep
+                # the database from exploding)
+                excluded = ["modTs", "lastStateModTs"]
+                # Create the list of columns to use for the index, then add the nodes
+                # attributes to the database
+                id_cols = [_ for _ in df.columns.to_list() if _ not in excluded]
+                logger.info(f"site: {site}, records: {df.shape}")
+                cah.store_results_in_db(
+                    df,
+                    config.db_path,
+                    "CISCO_ACI_GET_SITE_fabric_nodes",
+                    config.timestamp,
+                    id_cols,
+                )
+
+    # Attempt to collect client endpoint ips from ACI sites
+    for site, params in config.aci_sites.items():
+        token = params.get("token")
+        if token:
+            msg = f"Collecting endpoint attributes from site '{site}' url: '{url}'"
+            logger.info(msg)
+            # Use the token to get interface IP addresses
+            for url in params["apic_urls"]:
+                df = get_site_client_endpoint_ips(
+                    url, params["token"], verify=config.validate_certs
+                )
+                breakpoint()
+                # If endpoints were found then break out of the loop. Otherwise, proceed
+                if not df.empty:
+                    import sys
+                    sys.exit()
+                    # Move the APIC that responded to the beginning of the `apic_urls`
+                    # list for the site
+                    config.aci_sites[site]["apic_urls"] = hp.move_list_element_to_front(
+                        config.aci_sites[site]["apic_urls"], url
+                    )
+                    break
+            # If endpoints were found then add them to the database
+            if not df.empty:
+                # Exclude these columns from being part of the index (this is to keep
+                # the database from exploding)
+                excluded = ["modTs" ""]
+                # Create the list of columns to use for the index, then add the nodes
+                # attributes to the database
+                id_cols = [_ for _ in df.columns.to_list() if _ not in excluded]
+                logger.info(f"site: {site}, records: {df.shape}")
+                cah.store_results_in_db(
+                    df,
+                    config.db_path,
+                    "CISCO_ACI_GET_SITE_client_endpoint_ips",
+                    config.timestamp,
+                    id_cols,
+                )
 
     # Attempt to collect node attributes from ACI sites
     for site, params in config.aci_sites.items():
@@ -410,7 +702,7 @@ def main(env_path: str):
     for site, params in config.aci_sites.items():
         token = params.get("token")
         if token:
-            msg = f"Collecting node attributes from site '{site}' url: '{url}'"
+            msg = f"Collecting subnet attributes from site '{site}' url: '{url}'"
             logger.info(msg)
             # Use the token to get interface IP addresses
             for url in params["apic_urls"]:
