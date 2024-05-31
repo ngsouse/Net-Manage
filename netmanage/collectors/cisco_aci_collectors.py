@@ -14,14 +14,6 @@ from typing import Any, Dict, Optional
 class AppConfig:
     """
     A class to provide access to the application's configuration settings.
-
-    Parameters
-    ----------
-    None
-
-    Returns
-    -------
-    None
     """
 
     pass
@@ -45,192 +37,83 @@ def load_environment_variables(env_path: str) -> AppConfig:
     config = AppConfig()
     env_path = os.path.expanduser(env_path)
 
-    def validate_env_path(env_path: str):
-        if not os.path.exists(env_path):
-            failure_msg = f"Error: could not find '{env_path}'. Does it exist?"
+    def validate_env_path(path: str):
+        if not os.path.exists(path):
+            failure_msg = f"Error: could not find '{path}'. Does it exist?"
             logger.critical(failure_msg)
             raise Exception(failure_msg)
-        load_dotenv(override=True, dotenv_path=env_path)
+        load_dotenv(override=True, dotenv_path=path)
 
-    validate_env_path(env_path)
-
-    def create_jobs_timestamp(config):
+    def create_jobs_timestamp(cfg):
         now = datetime.now()
-        setattr(config, "timestamp", now.strftime("%Y-%m-%d %H:%M:%S.%f"))
+        setattr(cfg, "timestamp", now.strftime("%Y-%m-%d %H:%M:%S.%f"))
 
-    create_jobs_timestamp(config)
-
-    def get_path_variables(config):
+    def get_path_variables(cfg):
         path_vars = {
-            "db_path": hp.get_expanded_path("database_path")
-            + "/"
-            + hp.get_expanded_path("database_name"),
+            "db_path": os.path.join(
+                hp.get_expanded_path("database_path"),
+                hp.get_expanded_path("database_name"),
+            ),
             "divergence_path": hp.get_expanded_path("divergence_path"),
             "logs_db": hp.get_expanded_path("logs_db"),
             "utils_db": hp.get_expanded_path("utils_db"),
             "artifacts_path": hp.get_expanded_path("artifacts_path"),
         }
-        missing_vars = []
+        missing_vars = [key for key, value in path_vars.items() if not value]
         for key, value in path_vars.items():
-            if value:
-                setattr(config, key, value)
-            else:
-                missing_vars.append(key)
-
+            setattr(cfg, key, value)
         if missing_vars:
-            for line in missing_vars:
-                logger.warning(f"Missing environment variable: {line}")
+            for var in missing_vars:
+                logger.warning(f"Missing environment variable: {var}")
 
-    get_path_variables(config)
-
-    def get_aci_variables(config):
+    def get_aci_variables(cfg):
         sites = os.environ.get("aci_sites")
         if sites:
-            sites = hp.strip_list_spaces(sites.split(","))
-            sites = hp.remove_duplicates(sites)
-        if sites:
-            aci_sites = {k: {} for k in sites}
+            sites = hp.remove_duplicates(hp.strip_list_spaces(sites.split(",")))
+            aci_sites = {site: {} for site in sites}
             for site in sites:
-                aci_sites[site]["site_name"] = site
                 fixed_site = site.replace(" ", "-")
+                aci_sites[site] = {
+                    "site_name": site,
+                    "apic_urls": process_urls(
+                        os.environ.get(f"aci_sites_{fixed_site}_apic_urls")
+                    ),
+                    "username": os.environ.get(f"aci_sites_{fixed_site}_username"),
+                    "password": os.environ.get(f"aci_sites_{fixed_site}_password"),
+                }
+                check_credentials(aci_sites[site], site)
+            setattr(cfg, "aci_sites", aci_sites)
 
-                aci_sites[site]["apic_urls"] = []
-                try:
-                    apic_urls = os.environ.get(
-                        f"aci_sites_{fixed_site}_apic_urls"
-                    ).split(",")
-                    apic_urls = hp.strip_list_spaces(apic_urls)
-                    apic_urls = hp.remove_duplicates(apic_urls)
-                    apic_urls = [
-                        (
-                            "https://" + url
-                            if url.startswith("http://")
-                            else (
-                                "https://" + url
-                                if not url.startswith("https://")
-                                else url
-                            )
-                        )
-                        for url in apic_urls
-                    ]
-                    aci_sites[site]["apic_urls"] = apic_urls
-                except AttributeError as e:
-                    if str(e) == "'NoneType' object has no attribute 'split'":
-                        err_message = (
-                            f"APIC URLs for site '{site}' appear to be missing."
-                        )
-                        logger.error(err_message)
-                    else:
-                        logger.error(str(e))
+    def process_urls(urls: str):
+        if urls:
+            urls = hp.remove_duplicates(hp.strip_list_spaces(urls.split(",")))
+            return [
+                "https://" + url if not url.startswith("https://") else url
+                for url in urls
+            ]
+        return []
 
-                aci_sites[site]["username"] = os.environ.get(
-                    f"aci_sites_{fixed_site}_username"
-                )
-                aci_sites[site]["password"] = os.environ.get(
-                    f"aci_sites_{fixed_site}_password"
-                )
-                if not aci_sites[site]["username"]:
-                    logger.warning(f"The username for site '{site}' is blank.")
-                if not aci_sites[site]["password"]:
-                    logger.warning(f"The password for site '{site}' is blank.")
+    def check_credentials(site_info, site_name):
+        if not site_info["username"]:
+            logger.warning(f"The username for site '{site_name}' is blank.")
+        if not site_info["password"]:
+            logger.warning(f"The password for site '{site_name}' is blank.")
 
-            setattr(config, "aci_sites", aci_sites)
+    def set_cert_validation_boolean(cfg):
+        setattr(cfg, "validate_certs", ast.literal_eval(os.environ["validate_certs"]))
 
+    validate_env_path(env_path)
+    create_jobs_timestamp(config)
+    get_path_variables(config)
     get_aci_variables(config)
-
-    def set_cert_validation_boolean(config):
-        """
-        Sets the boolean for cert validation. Right now, we enable or disable
-        validation globally. In the future, we might want to expand it to be more
-        granular.
-
-        Parameters
-        ----------
-        config : object
-            The object containing the variables for the deployment.
-
-        Returns
-        -------
-        None
-        """
-        setattr(
-            config, "validate_certs", ast.literal_eval(os.environ["validate_certs"])
-        )
-
     set_cert_validation_boolean(config)
 
     return config
 
 
-def get_api_response(
-    url: str, token: str, endpoint: str, verify: bool = True
+def get_nodes_attributes(
+    url: str, token: str, verify: bool = True
 ) -> Optional[Dict[str, Any]]:
-    """
-    Performs an HTTP GET request to the specified APIC URL and retrieves data.
-
-    Parameters
-    ----------
-    url : str
-        The base URL of the ACI APIC to which the request is sent.
-    token : str
-        The authentication token used for the APIC session.
-    endpoint : str
-        The specific API endpoint to be appended to the base URL.
-    verify : bool, optional
-        A boolean indicating whether to verify the server's TLS certificate.
-        Defaults to True.
-
-    Returns
-    -------
-    Optional[Dict[str, Any]]
-        A dictionary containing the response data, or None if an error occurs during the request.
-
-    Raises
-    ------
-    HTTPError
-        If the HTTP request returned an unsuccessful status code.
-    Exception
-        If any other exception occurred during the request.
-    """
-    logger = hp.setup_logger()
-    headers = {"Cookie": f"APIC-cookie={token}"}
-    full_url = f"{url}/{endpoint}"
-
-    try:
-        response = requests.get(full_url, headers=headers, verify=verify)
-        response.raise_for_status()
-        return response.json()
-    except HTTPError as http_err:
-        logger.error(f"HTTP error occurred: {http_err}")
-    except Exception as err:
-        logger.error(f"An error occurred: {err}")
-
-    return None
-
-
-def process_api_response(response: Optional[Dict[str, Any]], key: str) -> pd.DataFrame:
-    """
-    Processes the API response data and converts it into a Pandas DataFrame.
-
-    Parameters
-    ----------
-    response : Optional[Dict[str, Any]]
-        The API response data.
-    key : str
-        The key to access the specific attributes within the response data.
-
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame containing the processed data.
-    """
-    if response:
-        flattened_data = [item[key]["attributes"] for item in response["imdata"]]
-        return pd.DataFrame(flattened_data)
-    return pd.DataFrame()
-
-
-def get_nodes_attributes(url: str, token: str, verify: bool = True) -> pd.DataFrame:
     """
     Retrieve node attributes from an ACI APIC.
 
@@ -246,14 +129,23 @@ def get_nodes_attributes(url: str, token: str, verify: bool = True) -> pd.DataFr
 
     Returns
     -------
-    pd.DataFrame
-        A DataFrame containing the node attributes.
+    Optional[Dict[str, Any]]
+        A dictionary containing the response data with node attributes, or None if
+        an error occurs during the request.
+
+    Raises
+    ------
+    HTTPError
+        If the HTTP request returned an unsuccessful status code.
+    Exception
+        If any other exception occurred during the request.
     """
-    response = get_api_response(url, token, "api/node/class/topSystem.json", verify)
-    return process_api_response(response, "topSystem")
+    return make_aci_request(f"{url}/api/node/class/topSystem.json", token, verify)
 
 
-def get_site_subnets(url: str, token: str, verify: bool = True) -> pd.DataFrame:
+def get_site_subnets(
+    url: str, token: str, verify: bool = True
+) -> Optional[Dict[str, Any]]:
     """
     Retrieve site subnets from an ACI APIC.
 
@@ -269,26 +161,47 @@ def get_site_subnets(url: str, token: str, verify: bool = True) -> pd.DataFrame:
 
     Returns
     -------
-    pd.DataFrame
-        A DataFrame containing the site subnets.
-    """
-    response = get_api_response(url, token, "api/node/class/fvSubnet.json", verify)
-    df = process_api_response(response, "fvSubnet")
+    Optional[Dict[str, Any]]
+        A dictionary containing the response data with site subnets, or None if
+        an error occurs during the request.
 
+    Raises
+    ------
+    HTTPError
+        If the HTTP request returned an unsuccessful status code.
+    Exception
+        If any other exception occurred during the request.
+    """
+    df = make_aci_request(f"{url}/api/node/class/fvSubnet.json", token, verify)
     if not df.empty:
         df[["address", "cidr"]] = df["ip"].str.split("/", expand=True)
-        import ipaddress
-
-        def get_network_ip(ip_with_cidr):
-            network = ipaddress.ip_network(ip_with_cidr, strict=False)
-            return str(network.network_address)
-
         df["network_ip"] = df["ip"].apply(get_network_ip)
-
     return df
 
 
-def get_site_inventory(url: str, token: str, verify: bool = True) -> pd.DataFrame:
+def get_network_ip(ip_with_cidr):
+    """
+    Calculate the network IP from an IP address with CIDR notation.
+
+    Parameters
+    ----------
+    ip_with_cidr : str
+        IP address with CIDR notation.
+
+    Returns
+    -------
+    str
+        Network IP address.
+    """
+    import ipaddress
+
+    network = ipaddress.ip_network(ip_with_cidr, strict=False)
+    return str(network.network_address)
+
+
+def get_site_inventory(
+    url: str, token: str, verify: bool = True
+) -> Optional[Dict[str, Any]]:
     """
     Retrieve site inventory from an ACI APIC.
 
@@ -304,18 +217,25 @@ def get_site_inventory(url: str, token: str, verify: bool = True) -> pd.DataFram
 
     Returns
     -------
-    pd.DataFrame
-        A DataFrame containing the site inventory.
+    Optional[Dict[str, Any]]
+        A dictionary containing the response data with site inventory, or None if
+        an error occurs during the request.
+
+    Raises
+    ------
+    HTTPError
+        If the HTTP request returned an unsuccessful status code.
+    Exception
+        If any other exception occurred during the request.
     """
-    response = get_api_response(url, token, "api/node/class/fabricNode.json", verify)
-    return process_api_response(response, "fabricNode")
+    return make_aci_request(f"{url}/api/node/class/fabricNode.json", token, verify)
 
 
 def get_site_client_endpoint_ips(
     url: str, token: str, verify: bool = True
-) -> pd.DataFrame:
+) -> Optional[Dict[str, Any]]:
     """
-    Retrieve site client endpoint IPs from an ACI APIC.
+    Retrieve site endpoints from an ACI APIC.
 
     Parameters
     ----------
@@ -329,16 +249,25 @@ def get_site_client_endpoint_ips(
 
     Returns
     -------
-    pd.DataFrame
-        A DataFrame containing the client endpoint IPs.
+    Optional[Dict[str, Any]]
+        A dictionary containing the response data with site endpoints, or None if
+        an error occurs during the request.
+
+    Raises
+    ------
+    HTTPError
+        If the HTTP request returned an unsuccessful status code.
+    Exception
+        If any other exception occurred during the request.
     """
-    response = get_api_response(
-        url, token, "api/node/class/fvIp.json?rsp-subtree=full", verify
+    return make_aci_request(
+        f"{url}/api/node/class/fvIp.json?rsp-subtree=full", token, verify
     )
-    return process_api_response(response, "fvIp")
 
 
-def get_site_bridge_domains(url: str, token: str, verify: bool = True) -> pd.DataFrame:
+def get_site_bridge_domains(
+    url: str, token: str, verify: bool = True
+) -> Optional[Dict[str, Any]]:
     """
     Retrieve site bridge domains from an ACI APIC.
 
@@ -354,11 +283,53 @@ def get_site_bridge_domains(url: str, token: str, verify: bool = True) -> pd.Dat
 
     Returns
     -------
-    pd.DataFrame
-        A DataFrame containing the bridge domains.
+    Optional[Dict[str, Any]]
+        A dictionary containing the response data with site bridge domains, or None if
+        an error occurs during the request.
+
+    Raises
+    ------
+    HTTPError
+        If the HTTP request returned an unsuccessful status code.
+    Exception
+        If any other exception occurred during the request.
     """
-    response = get_api_response(url, token, "api/node/class/fvBD.json", verify)
-    return process_api_response(response, "fvBD")
+    return make_aci_request(f"{url}/api/node/class/fvBD.json", token, verify)
+
+
+def make_aci_request(url: str, token: str, verify: bool) -> Optional[pd.DataFrame]:
+    """
+    Helper function to make an HTTP GET request to the ACI APIC and process the response.
+
+    Parameters
+    ----------
+    url : str
+        The URL for the ACI APIC API endpoint.
+    token : str
+        The authentication token for the APIC session.
+    verify : bool
+        Whether to verify the server's TLS certificate.
+
+    Returns
+    -------
+    Optional[pd.DataFrame]
+        A DataFrame containing the response data, or None if an error occurs during the request.
+    """
+    logger = hp.setup_logger()
+    headers = {"Cookie": f"APIC-cookie={token}"}
+    try:
+        response = requests.get(url, headers=headers, verify=verify)
+        response.raise_for_status()
+        attributes = response.json()
+        flattened_data = [
+            item[next(iter(item))]["attributes"] for item in attributes["imdata"]
+        ]
+        return pd.DataFrame(flattened_data)
+    except HTTPError as http_err:
+        logger.error(f"HTTP error occurred: {http_err}")
+    except Exception as err:
+        logger.error(f"An error occurred: {err}")
+    return pd.DataFrame()
 
 
 def save_collector(
@@ -367,33 +338,24 @@ def save_collector(
     """
     Collects data from ACI site using the specified collector function and stores it in the database.
 
-    Parameters
-    ----------
-    logger : logging.Logger
-        Logger instance for logging messages.
-    config : AppConfig
-        Configuration object containing ACI site details and database path.
-    site : str
-        Name of the ACI site.
-    params : dict
-        Dictionary containing site parameters including APIC URLs and tokens.
-    collector_func : function
-        Function to collect data from the ACI site.
-    db_table : str
-        Name of the database table to store the collected data.
-    excluded_columns : list
-        List of columns to exclude from the database index.
+    Args:
+        logger (logging.Logger): Logger instance for logging messages.
+        config (AppConfig): Configuration object containing ACI site details and database path.
+        site (str): Name of the ACI site.
+        params (dict): Dictionary containing site parameters including APIC URLs and tokens.
+        collector_func (function): Function to collect data from the ACI site.
+        db_table (str): Name of the database table to store the collected data.
+        excluded_columns (list): List of columns to exclude from the database index.
 
-    Returns
-    -------
-    None
+    Returns:
+        None
     """
     token = params.get("token")
     if token:
         for url in params["apic_urls"]:
             msg = f"Collecting data from site '{site}' url: '{url}' using {collector_func.__name__}"
             logger.info(msg)
-            df = collector_func(url, params["token"], verify=config.validate_certs)
+            df = collector_func(url, token, verify=config.validate_certs)
             df.insert(len(df.columns), "site", site)
             if not df.empty:
                 config.aci_sites[site]["apic_urls"] = hp.move_list_element_to_front(
@@ -401,14 +363,10 @@ def save_collector(
                 )
                 break
         if not df.empty:
-            id_cols = [col for col in df.columns if col not in excluded_columns]
+            id_cols = [_ for _ in df.columns.to_list() if _ not in excluded_columns]
             logger.info(f"site: {site}, records: {df.shape}")
             cah.store_results_in_db(
-                df,
-                config.db_path,
-                db_table,
-                config.timestamp,
-                id_cols,
+                df, config.db_path, db_table, config.timestamp, id_cols
             )
 
 
@@ -417,14 +375,11 @@ def main(env_path: str):
     Main function to set up the logger, load environment variables, authenticate to ACI sites,
     and collect various types of data from the sites.
 
-    Parameters
-    ----------
-    env_path : str
-        Path to the environment variables file.
+    Args:
+        env_path (str): Path to the environment variables file.
 
-    Returns
-    -------
-    None
+    Returns:
+        None
     """
     logger = hp.setup_logger()
     config = load_environment_variables(env_path)
@@ -444,9 +399,8 @@ def main(env_path: str):
                     config.aci_sites[site]["apic_urls"], url
                 )
                 break
-            setattr(config, "aci_token", None)
 
-    data_collection_functions = [
+    collectors = [
         (
             get_site_bridge_domains,
             "CISCO_ACI_GET_SITE_bridge_domains",
@@ -470,10 +424,10 @@ def main(env_path: str):
         (get_site_subnets, "CISCO_ACI_GET_SITE_SUBNETS", ["modTs"]),
     ]
 
-    for func, db_table, excluded_columns in data_collection_functions:
+    for collector, db_table, excluded_columns in collectors:
         for site, params in config.aci_sites.items():
             save_collector(
-                logger, config, site, params, func, db_table, excluded_columns
+                logger, config, site, params, collector, db_table, excluded_columns
             )
 
 
