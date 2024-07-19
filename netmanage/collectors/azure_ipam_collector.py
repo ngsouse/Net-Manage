@@ -7,7 +7,6 @@ from sqlalchemy import create_engine
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.network import NetworkManagementClient
 from azure.mgmt.resource import SubscriptionClient
-from divergence.helpers import logging_helpers as lh
 from dotenv import load_dotenv
 from netmanage.helpers import helpers as hp
 from typing import Dict, List
@@ -451,7 +450,7 @@ subnets = list()
 
 if __name__ == "__main__":
     credential = get_azure_default_credential()
-    logger = lh.setup_logger()
+    logger = hp.setup_logger()
     db_path = os.path.expanduser(os.environ["database_path"])
     database_name = os.environ["database_name"]
     database_full_path = f'{db_path}/{database_name}'
