@@ -5,6 +5,9 @@ ansible
 ansible-pylibssh
 ansible-runner>=2.2.1
 aiolimiter
+azure-identity
+azure-mgmt-network
+azure-mgmt-resource
 dnacentersdk
 flake8
 jupyterlab
