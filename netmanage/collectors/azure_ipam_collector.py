@@ -13,6 +13,8 @@ from typing import Dict, List
 
 load_dotenv()
 
+logger = hp.setup_logger()
+
 # Function definitions (get_subscription_ids, get_private_ips, get_public_ips, get_subnets) should be included here
 
 def get_azure_default_credential():
@@ -443,18 +445,17 @@ def get_cidr_for_ip(ip_address, subnets_df):
             return row['address_prefix'].split('/')[-1]
     return None
 
-# Example usage
-private_ips = list()
-public_ips = list()
-subnets = list()
-
-if __name__ == "__main__":
+def main():
     credential = get_azure_default_credential()
-    logger = hp.setup_logger()
     db_path = os.path.expanduser(os.environ["database_path"])
     database_name = os.environ["database_name"]
     database_full_path = f'{db_path}/{database_name}'
     # logging.basicConfig(level=logging.INFO)
+
+    # Example usage
+    private_ips = list()
+    public_ips = list()
+    subnets = list()
 
     try:
         subs = get_subscription_ids(credential)
@@ -473,7 +474,7 @@ if __name__ == "__main__":
                     logger.info(f"Finished fetching data for subscription {sub}")
 
                 except Exception as e:
-                    logger.info.warning(f"An error occurred while processing subscription {sub}: {e}")
+                    logger.warning(f"An error occurred while processing subscription {sub}: {e}")
             subnets_df = parse_subnets(subnets)
             save_collector(
                 subnets_df, logger, database_full_path,
@@ -503,4 +504,7 @@ if __name__ == "__main__":
 
     except Exception as e:
         logger.warning(f"An error occurred while fetching subscription IDs: {e}")
+
+if __name__ == "__main__":
+    main()
 
